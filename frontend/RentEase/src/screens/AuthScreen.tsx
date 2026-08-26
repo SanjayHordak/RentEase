@@ -31,24 +31,23 @@ import { signUpWithEmail, signInWithEmail } from '../backend/firebaseAuth';
 import {
   GoogleSignin,
   GoogleSigninButton,
-  statusCodes,
 } from '@react-native-google-signin/google-signin';
-import { IOS_CLIENT_ID, WEB_CLIENT_ID } from '../signInComponents/key';
+import {
+  GOOGLE_SIGN_IN_CONFIGURED,
+  IOS_CLIENT_ID,
+  WEB_CLIENT_ID,
+} from '../signInComponents/key';
 
-GoogleSignin.configure({
-  webClientId: WEB_CLIENT_ID, // client ID of type WEB for your server. Required to get the `idToken` on the user object, and for offline access.
-  scopes: [
-    /* what APIs you want to access on behalf of the user, default is email and profile
-    this is just an example, most likely you don't need this option at all! */
-    'https://www.googleapis.com/auth/drive.readonly',
-  ],
-  forceCodeForRefreshToken: false, // [Android] related to `serverAuthCode`, read the docs link below *.
-  iosClientId: IOS_CLIENT_ID
-});
+if (GOOGLE_SIGN_IN_CONFIGURED) {
+  GoogleSignin.configure({
+    webClientId: WEB_CLIENT_ID,
+    iosClientId: IOS_CLIENT_ID || undefined,
+  });
+}
 
 const {width, height} = Dimensions.get('window');
 
-export default function AuthScreen() {
+export default function AuthScreen({navigation}: {navigation: any}) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -90,9 +89,11 @@ export default function AuthScreen() {
       if (isLogin) {
         await signInWithEmail(email, password);
         console.log('Logged in successfully');
+        navigation.replace('MainTabs');
       } else {
         await signUpWithEmail(email, password, name);
         console.log('Signed up successfully');
+        navigation.replace('MainTabs');
       }
     } catch (error: any) {
       Alert.alert('Authentication Error', error.message || 'An error occurred.');
@@ -232,10 +233,26 @@ export default function AuthScreen() {
                       color={GoogleSigninButton.Color.Dark}
                       onPress={async () => {
                         try {
+                          if (!GOOGLE_SIGN_IN_CONFIGURED) {
+                            Alert.alert(
+                              'Google Sign-In unavailable',
+                              'Replace WEB_CLIENT_ID with the OAuth Web client ID ending in .apps.googleusercontent.com.',
+                            );
+                            return;
+                          }
                           setLoading(true);
-                          await signIn();
+                          const user = await signIn();
+                          if (user) {
+                            navigation.replace('MainTabs');
+                          }
                         } catch (error: any) {
-                          Alert.alert('Google Sign-In Error', error.message || 'Failed to sign in with Google');
+                          const message =
+                            error?.code === 10 ||
+                            error?.code === '10' ||
+                            error?.message?.includes('DEVELOPER_ERROR')
+                              ? 'Google OAuth setup does not match this Android app. In Firebase, add package com.rentease with SHA-1 5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25, then download google-services.json again.'
+                              : error.message || 'Failed to sign in with Google';
+                          Alert.alert('Google Sign-In Error', message);
                         } finally {
                           setLoading(false);
                         }

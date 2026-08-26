@@ -1,4 +1,10 @@
 export const Colors = {
+  primary: '#1A56DB',
+  teal: '#0F766E',
+  surface: '#F5F7FB',
+  ink: '#17233C',
+  slate: '#667085',
+  border: '#E2E8F0',
   // Pure dark backgrounds (no green tint)
   primaryDark: '#0A0A0A',
   primaryMid: '#121212',

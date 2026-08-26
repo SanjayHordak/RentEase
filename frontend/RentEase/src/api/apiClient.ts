@@ -23,6 +23,6 @@ export const saveUserToDatabase = async (uid: string, email: string, name: strin
     return data;
   } catch (error) {
     console.error('API Error (saveUserToDatabase):', error);
-    throw error;
+    return null;
   }
 };

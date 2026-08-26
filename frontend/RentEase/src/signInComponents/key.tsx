@@ -1,3 +1,7 @@
-export const WEB_CLIENT_ID = "44109319046-7l7aa5cade1qr6ogf1oc4q2evfcfoepe.apps.googleusercontent.com"
-export const ANDROID_CLIENT_ID = "44109319046-v7jfcqtiolq9mhku2scu64am4oe4pct5.apps.googleusercontent.com"
-export const IOS_CLIENT_ID = "44109319046-uah1jsndro76n40gpq3ej9p760g1pfbc.apps.googleusercontent.com"
+// These values must belong to the same Firebase project as google-services.json.
+export const WEB_CLIENT_ID = '840773301669-pi466qoqv4e6odgk4om1631j3on5u288.apps.googleusercontent.com';
+export const ANDROID_CLIENT_ID = 'AIzaSyDZ-tux6h8abBklL8AEIuTj-TGkL1M4KLI';
+export const IOS_CLIENT_ID = '';
+
+export const GOOGLE_SIGN_IN_CONFIGURED =
+	WEB_CLIENT_ID.endsWith('.apps.googleusercontent.com');

@@ -6,8 +6,13 @@ import {
 
 import auth from '@react-native-firebase/auth';
 import { saveUserToDatabase } from '../api/apiClient';
+import { GOOGLE_SIGN_IN_CONFIGURED } from './key';
 
 const signIn = async () => {
+  if (!GOOGLE_SIGN_IN_CONFIGURED) {
+    throw new Error('Google Sign-In is not configured for this Firebase project.');
+  }
+
   try {
     await GoogleSignin.hasPlayServices();
     const response = await GoogleSignin.signIn();

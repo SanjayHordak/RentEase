@@ -12,7 +12,16 @@
           "package_name": "com.rentease"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "840773301669-6iri8aqlm0hv8kad377pj3msn0hn17s3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rentease",
+            "certificate_hash": "3502ce34d359b5ee59ec8597da404de1f0713b27"
+          }
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDZ-tux6h8abBklL8AEIuTj-TGkL1M4KLI"
@@ -20,7 +29,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "840773301669-pi466qoqv4e6odgk4om1631j3on5u288.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
