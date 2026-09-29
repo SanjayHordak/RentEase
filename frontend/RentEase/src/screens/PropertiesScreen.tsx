@@ -33,7 +33,10 @@ const properties = [
   },
 ];
 
-export default function PropertiesScreen() {
+export default function PropertiesScreen({navigation,}:{navigation:any}) {
+  const handleAddProperty = ()=>{
+      navigation.navigate('AddProperty');
+  }
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -46,6 +49,11 @@ export default function PropertiesScreen() {
         <Text style={styles.subtitle}>
           Manage your properties
         </Text>
+        <Pressable
+          style={styles.fab}
+          onPress={handleAddProperty}>
+          <Text style={styles.fabText}>+</Text>
+        </Pressable>
       </View>
 
       <FlatList
@@ -58,7 +66,7 @@ export default function PropertiesScreen() {
 
             <View style={styles.mark}>
               <Text style={styles.markText}>
-                H
+                {item.type === 'Hostel' ? 'H' : 'A'}
               </Text>
             </View>
 
@@ -192,4 +200,20 @@ const styles = StyleSheet.create({
   due: {
     color: Colors.error,
   },
+  fab:{
+    position:'absolute',
+    top:50,
+    right:20,
+    height:55,
+    width:55,
+    borderRadius:15,
+    backgroundColor:Colors.accent,
+    alignItems:'center',
+    justifyContent:'center'
+    },
+  fabText:{
+    color:'white',
+    fontSize:15,
+    fontWeight:'800',
+  }
 });

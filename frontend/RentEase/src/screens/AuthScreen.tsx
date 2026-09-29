@@ -26,7 +26,7 @@ import Animated, {
 import LinearGradient from 'react-native-linear-gradient';
 import {Colors} from '../theme/colors';
 import signIn from '../signInComponents/SignIn';
-import { signUpWithEmail, signInWithEmail } from '../backend/firebaseAuth';
+import { signUpWithEmail, signInWithEmail, createGoogleUserProfile } from '../backend/firebaseAuth';
 
 import {
   GoogleSignin,
@@ -47,6 +47,13 @@ if (GOOGLE_SIGN_IN_CONFIGURED) {
 
 const {width, height} = Dimensions.get('window');
 
+// Pending Google user awaiting role selection before profile creation
+type PendingGoogleUser = {
+  token: string;
+  googleDisplayName: string;
+  googlePhotoUrl: string;
+} | null;
+
 export default function AuthScreen({navigation}: {navigation: any}) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -54,6 +61,8 @@ export default function AuthScreen({navigation}: {navigation: any}) {
   const [name, setName] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [role,setRole] = useState<"Landlord" | "Tenant">("Tenant");
+  const [pendingGoogleUser, setPendingGoogleUser] = useState<PendingGoogleUser>(null);
 
   // Segmented control indicator
   const tabIndicatorX = useSharedValue(0);
@@ -87,16 +96,38 @@ export default function AuthScreen({navigation}: {navigation: any}) {
     setLoading(true);
     try {
       if (isLogin) {
-        await signInWithEmail(email, password);
-        console.log('Logged in successfully');
+        // Manual Login: Firebase signIn → fetch profile from backend
+        const { profile } = await signInWithEmail(email, password);
+        console.log('Logged in successfully, profile:', profile?.role);
         navigation.replace('MainTabs');
       } else {
-        await signUpWithEmail(email, password, name);
-        console.log('Signed up successfully');
+        // Manual Sign Up: Firebase createUser → create profile with chosen role
+        const { profile } = await signUpWithEmail(email, password, name, role);
+        console.log('Signed up successfully, role:', profile?.role);
         navigation.replace('MainTabs');
       }
     } catch (error: any) {
       Alert.alert('Authentication Error', error.message || 'An error occurred.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Called when a new Google user picks their role
+  const handleGoogleRoleSelected = async (selectedRole: 'Tenant' | 'Landlord') => {
+    if (!pendingGoogleUser) return;
+    setLoading(true);
+    try {
+      await createGoogleUserProfile(
+        pendingGoogleUser.token,
+        pendingGoogleUser.googleDisplayName,
+        selectedRole,
+        pendingGoogleUser.googlePhotoUrl,
+      );
+      setPendingGoogleUser(null);
+      navigation.replace('MainTabs');
+    } catch (error: any) {
+      Alert.alert('Profile Error', error.message || 'Failed to create profile.');
     } finally {
       setLoading(false);
     }
@@ -158,6 +189,33 @@ export default function AuthScreen({navigation}: {navigation: any}) {
                     onChangeText={setName}
                     autoCapitalize="words"
                   />
+                </Animated.View>
+              )}
+              {!isLogin && (
+                <Animated.View 
+                entering={FadeInDown.duration(400)} 
+                style={styles.inputContainer}
+                >
+                  <Text style={styles.inputLabel}>IAM A</Text>
+                  <View style={styles.roleContainer}>
+                    <TouchableOpacity
+                    style={[
+                      styles.roleButton,
+                      role === 'Tenant' && styles.roleButtonActive,
+                    ]}
+                    onPress={()=> setRole('Tenant')}
+                    activeOpacity={0.8}>
+                      <Animated.Text style={[styles.roleText, role === 'Tenant' && styles.roleTextActive]}>TENANT</Animated.Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                    style={[styles.roleButton,
+                      role === 'Landlord' && styles.roleButtonActive,
+                    ]}
+                    onPressOut={()=>setRole('Landlord')}
+                    activeOpacity={0.8}>
+                      <Animated.Text style={[styles.roleText, role === 'Landlord' && styles.roleTextActive]}>LANDLORD</Animated.Text>
+                    </TouchableOpacity>
+                  </View>
                 </Animated.View>
               )}
 
@@ -241,8 +299,19 @@ export default function AuthScreen({navigation}: {navigation: any}) {
                             return;
                           }
                           setLoading(true);
-                          const user = await signIn();
-                          if (user) {
+                          const result = await signIn();
+                          if (!result) return; // User cancelled
+
+                          if (result.isNewUser) {
+                            // New Google user — show role selection before creating profile
+                            setPendingGoogleUser({
+                              token: result.token,
+                              googleDisplayName: result.googleDisplayName,
+                              googlePhotoUrl: result.googlePhotoUrl,
+                            });
+                          } else {
+                            // Existing user — profile already fetched, go home
+                            console.log('Google login, existing user role:', result.profile?.role);
                             navigation.replace('MainTabs');
                           }
                         } catch (error: any) {
@@ -264,6 +333,43 @@ export default function AuthScreen({navigation}: {navigation: any}) {
                 </TouchableOpacity> */}
               </View>
             </Animated.View>
+
+            {/* Google Role Selection Overlay — shown for new Google users */}
+            {pendingGoogleUser && (
+              <Animated.View entering={FadeInDown.duration(400)} style={styles.googleRoleOverlay}>
+                <Text style={styles.googleRoleTitle}>Almost there!</Text>
+                <Text style={styles.googleRoleSubtitle}>Select your role to complete setup.</Text>
+                <View style={styles.roleContainer}>
+                  <TouchableOpacity
+                    style={[styles.roleButton, styles.roleButtonActive]}
+                    onPress={() => handleGoogleRoleSelected('Tenant')}
+                    activeOpacity={0.8}
+                    disabled={loading}>
+                    {loading ? (
+                      <ActivityIndicator color={Colors.textPrimary} size="small" />
+                    ) : (
+                      <Text style={[styles.roleText, styles.roleTextActive]}>TENANT</Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.roleButton, styles.roleButtonActive]}
+                    onPress={() => handleGoogleRoleSelected('Landlord')}
+                    activeOpacity={0.8}
+                    disabled={loading}>
+                    {loading ? (
+                      <ActivityIndicator color={Colors.textPrimary} size="small" />
+                    ) : (
+                      <Text style={[styles.roleText, styles.roleTextActive]}>LANDLORD</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setPendingGoogleUser(null)}
+                  style={styles.googleRoleCancelBtn}>
+                  <Text style={styles.googleRoleCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
             
           </ScrollView>
         </KeyboardAvoidingView>
@@ -379,4 +485,68 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.inputBg,
   },
   socialBtnText: { color: Colors.textPrimary, fontSize: 15, fontWeight: '700' },
+  roleContainer: {
+  flexDirection: 'row',
+  gap: 12,
+},
+
+roleButton: {
+  flex: 1,
+  paddingVertical: 16,
+  borderWidth: 1,
+  borderColor: Colors.inputBorder,
+  borderRadius: 8,
+  alignItems: 'center',
+  backgroundColor: Colors.inputBg,
+},
+
+roleButtonActive: {
+  borderColor: Colors.accent,
+  backgroundColor: Colors.inputBg,
+},
+
+roleText: {
+  color: Colors.textSecondary,
+  fontSize: 14,
+  fontWeight: '700',
+  letterSpacing: 1,
+},
+
+roleTextActive: {
+  color: Colors.textPrimary,
+  fontWeight: '800',
+},
+
+googleRoleOverlay: {
+  marginTop: 32,
+  padding: 24,
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: Colors.inputBorder,
+  backgroundColor: Colors.inputBg,
+  alignItems: 'center',
+},
+googleRoleTitle: {
+  color: Colors.textPrimary,
+  fontSize: 22,
+  fontWeight: '800',
+  marginBottom: 8,
+},
+googleRoleSubtitle: {
+  color: Colors.textSecondary,
+  fontSize: 14,
+  marginBottom: 20,
+  textAlign: 'center',
+},
+googleRoleCancelBtn: {
+  marginTop: 16,
+  paddingVertical: 8,
+  paddingHorizontal: 24,
+},
+googleRoleCancelText: {
+  color: Colors.textMuted,
+  fontSize: 14,
+  fontWeight: '600',
+},
 });
+
