@@ -1,14 +1,40 @@
-import React, {useState} from 'react';
-import {Alert, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View} from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import auth from '@react-native-firebase/auth';
 import {signOutUser} from '../backend/firebaseAuth';
 import {Colors} from '../theme/colors';
+import { getIdToken, getUserProfile } from '../api/apiClient';
 
 export default function HomeScreen({navigation}: {navigation: any}) {
   const user = auth().currentUser;
-  const [role, setRole] = useState<'landlord' | 'tenant'>('landlord');
   const firstName = user?.displayName?.split(' ')[0] || 'there';
+  const [profile,setProfile] = useState<any>(null);
+  const [loading,setLoading] = useState(true);
+
+  useEffect(()=>{
+      loadProfile();
+  },[]);
+  const loadProfile = async () =>{
+    try{
+       const token = await getIdToken();
+       const userProfile = await getUserProfile(token);
+       setProfile(userProfile);
+    }catch(error){
+       console.error("Error loading profile",error);
+       Alert.alert("Error","Could not load profile",[{text:"OK"}]);
+    } finally{
+      setLoading(false);
+    }
+  }
+  const role = profile?.role?.toUpperCase();
+  if(loading){
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator/>
+      </SafeAreaView>
+    )
+  }
 
   const handleSignOut = async () => {
     try {
@@ -21,17 +47,34 @@ export default function HomeScreen({navigation}: {navigation: any}) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.primaryDark} />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.topBar}><View><Text style={styles.brand}>RentEase</Text><Text style={styles.greeting}>Good morning, {firstName}</Text></View><Pressable accessibilityLabel="Sign out" onPress={handleSignOut} style={styles.avatar}><Text style={styles.avatarText}>{firstName[0].toUpperCase()}</Text></Pressable></View>
-        <View style={styles.roleSwitch}><RoleButton label="Landlord" active={role === 'landlord'} onPress={() => setRole('landlord')} /><RoleButton label="Tenant" active={role === 'tenant'} onPress={() => setRole('tenant')} /></View>
-        {role === 'landlord' ? <LandlordDashboard /> : <TenantDashboard />}
+      <StatusBar 
+      barStyle="light-content" 
+      backgroundColor={Colors.primaryDark} 
+      />
+      <ScrollView 
+      contentContainerStyle={styles.content} 
+      showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.topBar}>
+          <View>
+            <Text style={styles.brand}>RentEase</Text>
+            <Text style={styles.greeting}>Good morning, {firstName}</Text>
+            </View>
+            <Pressable 
+            accessibilityLabel="Sign out" 
+            onPress={handleSignOut} 
+            style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {firstName[0].toUpperCase()}
+                </Text>
+                </Pressable>
+                </View>
+        {role === 'LANDLORD' && <LandlordDashboard/>}
+        {role === 'TENANT' && <TenantDashboard/>}
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-function RoleButton({label, active, onPress}: {label: string; active: boolean; onPress: () => void}) { return <Pressable style={[styles.roleButton, active && styles.roleActive]} onPress={onPress}><Text style={[styles.roleText, active && styles.roleTextActive]}>{label}</Text></Pressable>; }
 
 function LandlordDashboard() {
   return <><View style={styles.sectionHeading}><View><Text style={styles.eyebrow}>THIS MONTH</Text><Text style={styles.sectionTitle}>Rent collection</Text></View><Text style={styles.month}>AUG 2026</Text></View><LinearGradient colors={[Colors.cardBg, Colors.primaryMid]} style={styles.collectionCard}><View><Text style={styles.cardLabel}>COLLECTED</Text><Text style={styles.amount}>₹24,000</Text><Text style={styles.cardMeta}>2 of 3 properties paid</Text></View><View style={styles.progressRing}><Text style={styles.progressText}>67%</Text></View></LinearGradient><Pressable style={styles.primaryAction} onPress={() => Alert.alert('Rent tracker', 'Add a property to start tracking rent.')}><Text style={styles.primaryActionText}>+  Mark rent received</Text></Pressable><View style={styles.statsRow}><Stat value="₹12,000" label="Pending" color="#FFD60A" /><Stat value="1" label="Maintenance" color={Colors.error} /><Stat value="3" label="Properties" color={Colors.accent} /></View><View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Your properties</Text><Text style={styles.link}>View all</Text></View><PropertyRow name="Greenview Apartments" detail="2 BHK  •  Kochi" rent="₹12,000" status="Paid" /><PropertyRow name="Palm Grove Residency" detail="1 BHK  •  Bengaluru" rent="₹12,000" status="Paid" /><PropertyRow name="Lake Road Home" detail="2 BHK  •  Chennai" rent="₹12,000" status="Due" due /></>;

@@ -4,12 +4,14 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import SplashScreen from '../screens/SplashScreen';
 import AuthScreen from '../screens/AuthScreen';
 import BottomTabNavigator from './BottomTabNavigator';
+import AddPropertyScreen from '../components/AddPropertyScreen';
 
 
 export type RootStackParamList = {
   Splash: undefined;
   Auth: undefined;
   MainTabs: undefined;
+  AddProperty: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -33,6 +35,10 @@ export default function RootNavigator() {
           }}
         />
         <Stack.Screen name="MainTabs" component={BottomTabNavigator} />
+        <Stack.Screen
+          name="AddProperty"
+          component={AddPropertyScreen}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

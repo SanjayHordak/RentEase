@@ -1,80 +1,145 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 
 import auth from '@react-native-firebase/auth';
 import {signOutUser} from '../backend/firebaseAuth';
 import {Colors} from '../theme/colors';
+import {getIdToken, getUserProfile} from '../api/apiClient';
 
-export default function ProfileScreen({navigation}: {navigation: any}) {
+export default function ProfileScreen({
+  navigation,
+}: {
+  navigation: any;
+}) {
   const user = auth().currentUser;
 
-  const firstName =
-    user?.displayName?.split(' ')[0] || 'User';
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+
+      const token = await getIdToken();
+
+      if (!token) {
+        console.log('No Firebase token found');
+        return;
+      }
+
+      const userProfile = await getUserProfile(token);
+
+      console.log('User Profile:', userProfile);
+
+      setProfile(userProfile);
+    } catch (error) {
+      console.log('Error loading profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSignOut = async () => {
-    await signOutUser();
-    navigation.getParent()?.replace?.('Auth');
+    try {
+      await signOutUser();
+
+      navigation.getParent()?.replace?.('Auth');
+    } catch (error) {
+      console.log('Sign out error:', error);
+    }
   };
+
+  // Prefer API profile name, then Firebase name
+  const displayName =
+    profile?.name ||
+    profile?.displayName ||
+    user?.displayName ||
+    'User';
+
+  const email =
+    profile?.email ||
+    user?.email ||
+    'No email';
 
   return (
     <View style={styles.container}>
 
       <Text style={styles.eyebrow}>
-        RENТEASE
+        RENTЕASE
       </Text>
 
       <Text style={styles.title}>
         Profile
       </Text>
 
-      <View style={styles.profileCard}>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator
+            size="large"
+            color={Colors.accent}
+          />
 
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {firstName[0].toUpperCase()}
+          <Text style={styles.loadingText}>
+            Loading profile...
           </Text>
         </View>
+      ) : (
+        <>
+          <View style={styles.profileCard}>
 
-        <Text style={styles.name}>
-          {user?.displayName || 'RentEase User'}
-        </Text>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {displayName.charAt(0).toUpperCase()}
+              </Text>
+            </View>
 
-        <Text style={styles.email}>
-          {user?.email || 'No email'}
-        </Text>
+            <Text style={styles.name}>
+              {displayName}
+            </Text>
 
-      </View>
+            <Text style={styles.email}>
+              {email}
+            </Text>
 
-      <Pressable style={styles.item}>
-        <Text style={styles.itemText}>
-          Account settings
-        </Text>
-      </Pressable>
+          </View>
 
-      <Pressable style={styles.item}>
-        <Text style={styles.itemText}>
-          Saved properties
-        </Text>
-      </Pressable>
+          <Pressable style={styles.item}>
+            <Text style={styles.itemText}>
+              Account settings
+            </Text>
+          </Pressable>
 
-      <Pressable style={styles.item}>
-        <Text style={styles.itemText}>
-          Documents
-        </Text>
-      </Pressable>
+          <Pressable style={styles.item}>
+            <Text style={styles.itemText}>
+              Saved properties
+            </Text>
+          </Pressable>
 
-      <Pressable
-        style={styles.logout}
-        onPress={handleSignOut}>
-        <Text style={styles.logoutText}>
-          Sign out
-        </Text>
-      </Pressable>
+          <Pressable style={styles.item}>
+            <Text style={styles.itemText}>
+              Documents
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.logout}
+            onPress={handleSignOut}>
+            <Text style={styles.logoutText}>
+              Sign out
+            </Text>
+          </Pressable>
+        </>
+      )}
 
     </View>
   );
@@ -100,6 +165,18 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 6,
     marginBottom: 20,
+  },
+
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 50,
+  },
+
+  loadingText: {
+    color: Colors.textSecondary,
+    marginTop: 12,
+    fontSize: 14,
   },
 
   profileCard: {
@@ -167,4 +244,4 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
   },
-}); 
+});
