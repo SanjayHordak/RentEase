@@ -76,5 +76,9 @@ yarn-error.log
 
 #custom ignores
 backend/serviceAccountKey.json
+<<<<<<< HEAD
 node_modules
 .env
+=======
+node_modules
+>>>>>>> b37023d6e908c0883327ff79991d326b1b7f3efd
